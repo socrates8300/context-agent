@@ -164,9 +164,22 @@ def run(
             console.print(f"[red]Error changing directory: {e}[/red]")
             sys.exit(1)
 
+    from trae_agent.utils.task_parser import parse_markdown_tasks
+
     task_path = Path(task)
+    parsed_tasks = []
     if task_path.exists() and task_path.is_file():
-        task = task_path.read_text()
+        markdown_content = task_path.read_text()
+        parsed_tasks = parse_markdown_tasks(markdown_content)
+        console.print(f"[blue]Parsed tasks from {task_path}:[/blue]")
+        import json
+        console.print(json.dumps(parsed_tasks, indent=2))
+        # For now, we'll just take the first task as the main task for execution
+        if parsed_tasks:
+            task = parsed_tasks[0]['description']
+        else:
+            console.print("[yellow]No tasks found in the markdown file.[/yellow]")
+            sys.exit(0)
 
     config = load_config(provider, model, api_key, config_file, max_steps)
 

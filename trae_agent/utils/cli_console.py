@@ -110,10 +110,17 @@ class CLIConsole:
             )
         )
 
-    def print(self, message: str, color: str = "blue", bold: bool = False):
+    def print_info(self, message: str, bold: bool = False):
         message = f"[bold]{message}[/bold]" if bold else message
-        message = f"[{color}]{message}[/{color}]"
-        self.console.print(message)
+        self.console.print(f"[blue]{message}[/blue]")
+
+    def print_warning(self, message: str, bold: bool = False):
+        message = f"[bold]{message}[/bold]" if bold else message
+        self.console.print(f"[yellow]WARNING: {message}[/yellow]")
+
+    def print_error(self, message: str, bold: bool = False):
+        message = f"[bold]{message}[/bold]" if bold else message
+        self.console.print(f"[red]ERROR: {message}[/red]")
 
     def _create_compact_step_display(self, agent_step: AgentStep):
         step_content: list[str] = []

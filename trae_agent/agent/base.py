@@ -205,6 +205,7 @@ class Agent(ABC):
 
                     # Display error
                     if self.cli_console:
+                        self.cli_console.print_error(f"Agent Step Error: {e}")
                         self.cli_console.update_status(step)
 
                     # Record agent step
@@ -231,6 +232,8 @@ class Agent(ABC):
 
         except Exception as e:
             execution.final_result = f"Agent execution failed: {str(e)}"
+            if self.cli_console:
+                self.cli_console.print_error(f"Agent Execution Failed: {e}")
 
         execution.execution_time = time.time() - start_time
 

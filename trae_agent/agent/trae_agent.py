@@ -14,6 +14,7 @@ from ..utils.config import Config
 from ..utils.llm_basics import LLMMessage, LLMResponse
 from .agent_basics import AgentError, AgentExecution
 from .base import Agent
+from trae_agent.utils.context_gatherer import ContextGatherer
 
 TraeAgentToolNames = [
     "str_replace_based_edit_tool",
@@ -31,6 +32,7 @@ class TraeAgent(Agent):
         self.base_commit: str | None = None
         self.must_patch: str = "false"
         self.patch_path: str | None = None
+        self.context_gatherer = ContextGatherer(cli_console=self.cli_console) # Initialize ContextGatherer with cli_console
         super().__init__(config)
 
     def setup_trajectory_recording(self, trajectory_path: str | None = None) -> str:
@@ -95,12 +97,38 @@ class TraeAgent(Agent):
 
         if "issue" in extra_args:
             user_message += f"[Problem statement]: We're currently solving the following issue within our repository. Here's the issue text:\n{extra_args['issue']}\n"
+
+        # --- Context Gathering for the task ---
+        if "parsed_tasks" in extra_args and extra_args["parsed_tasks"]:
+            # Assuming the first task in the list is the current one
+            current_task_data = extra_args["parsed_tasks"][0]
+            context_files = current_task_data.get("context", [])
+            if context_files:
+                # Prepend project_path to context files to make them absolute
+                absolute_context_files = [str(Path(self.project_path) / f) for f in context_files]
+                gathered_context = self.context_gatherer.gather_context_from_files(absolute_context_files)
+                user_message += "\n[Relevant Context Files]:\n"
+                for file_path, content in gathered_context.items():
+                    user_message += f"--- {file_path} ---\n{content}\n\n"
+                if self.cli_console:
+                    self.cli_console.print_info(f"Gathered context for task: {list(gathered_context.keys())}")
+            else:
+                if self.cli_console:
+                    self.cli_console.print_info("No specific context files provided for this task.")
+        # --- End Context Gathering ---
+
         optional_attrs_to_set = ["base_commit", "must_patch", "patch_path"]
         for attr in optional_attrs_to_set:
             if attr in extra_args:
                 setattr(self, attr, extra_args[attr])
 
         self.initial_messages.append(LLMMessage(role="user", content=user_message))
+
+        # For simulation/verification: print the full user message with context
+        if self.cli_console:
+            self.cli_console.print_info("--- Full User Message with Context ---")
+            self.cli_console.print_info(user_message)
+            self.cli_console.print_info("--------------------------------------")
 
         # If trajectory recorder is set, start recording
         if self.trajectory_recorder:
